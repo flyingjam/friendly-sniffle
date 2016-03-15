@@ -9,6 +9,8 @@ import com.badlogic.gdx.math.Vector2
 import com.badlogic.ashley.core.Entity
 import com.badlogic.gdx.graphics.Texture
 
+import java.util.ArrayList
+
 fun PlayerPhysicsComponent(world : World, entity : Entity, x : Float, y : Float) : PhysicsComponent{
     val PlayerWidth = 10f
     val PlayerHeight = 20f
@@ -75,7 +77,9 @@ fun EnemyPhysicsComponent(world : World, entity : Entity, x : Float, y : Float) 
 
     return PhysicsComponent(body)
 }
+
 class PhysicsComponent(var body : Body)  : Component{        
+
 }
 
 class InputComponent : Component{
@@ -94,5 +98,43 @@ class GraphicComponent(val texture : Texture, val x : Float = 0f, val y : Float 
 }
 
 class PositionComponent(var x : Float = 0f, var y : Float= 0f) : Component{
+
+}
+
+open class SkillsComponent : Component{
+    var skills : ArrayList<Skill> = ArrayList<Skill>()
+
+    fun add(vararg additions : Skill){
+        for (skill in additions){
+            skills.add(skill)
+        }
+    }
+    
+    fun getAttack() : Skill? {
+        for (skill in skills){
+            if(skill.type == SkillType.ATTACK)
+                return skill
+        }
+
+        return null
+    }
+
+    fun getRange() : Skill?{
+        for (skill in skills){
+            if (skill.type == SkillType.RANGE)
+                return skill
+        }
+
+        return null
+    }
+    //holds skills
+    //one skill is range, one is melee
+    //rest is a list of skills
+    //a skill is something that has an animation and does damage
+    //should have a name
+    
+}
+
+class PlayerSkillsComponent : SkillsComponent(){
 
 }

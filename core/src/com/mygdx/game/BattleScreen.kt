@@ -24,6 +24,63 @@ import com.badlogic.gdx.utils.TimeUtils
 import com.badlogic.gdx.graphics.Texture
 import java.util.Random
 
+enum class SkillType{
+    ATTACK, RANGE, SKILL
+}
+
+open class Skill(var name : String = "DEFAULT", var type : SkillType){
+    open fun update(dt : Float, user : BattleContainer, vararg targets : BattleContainer){}
+    open fun draw(batch : SpriteBatch, user : BattleContainer){}
+    open fun isDone() : Boolean {return false}
+}
+
+class BasicAttackSkill : Skill("Attack", SkillType.ATTACK){
+    
+    var animationLock = true
+    val speed = 200 //temp
+    val proximity = 5 //temp
+    
+    //temp, use resource allocater later
+    //no disposing for now, memory leak
+    var regions = TextureAtlas("sprites.atlas")
+    var animation = Animation(.5f, regions.getRegions())
+    var time = 0f
+    var done = false
+    override fun update(dt : Float, user : BattleContainer, vararg targets : BattleContainer){
+        //Will only ever have 1 target
+        val enemy = targets.get(0)
+        if(user.x <= (enemy.x + proximity) && !animation.isAnimationFinished(time)){
+            //Player will always be to the left of the enemies, so we can
+            //assume that he will need to move left
+            user.x += speed * dt
+        }
+        else if (user.x >= 20f && animation.isAnimationFinished(time)){
+            user.x -= speed * dt
+        }
+        else if (user.x <= 20f && animation.isAnimationFinished(time)){
+            done = true
+        }
+        else{
+            animationLock = false 
+            time += dt
+        }
+    }
+
+    override fun draw(batch : SpriteBatch, user : BattleContainer){
+        batch.draw(animation.getKeyFrame(0f), user.x, user.y)
+        if (!animationLock){
+            val frame = animation.getKeyFrame(time) 
+            batch.draw(frame, user.x, user.y)
+            //play animation
+        }
+    }
+
+    override fun isDone() : Boolean{
+        return done
+    }
+
+}
+
 enum class BattleType{
     NORMAL
 }
@@ -82,33 +139,61 @@ class CommandState(){
 
 
 
-open class BattleState(var cycle : BattleCycle){
+open class BattleState(var cycle : BattleCycle){ 
     open fun update(dt : Float){}
     open fun draw(batch : SpriteBatch, font : BitmapFont){}
+    open fun onEnter(){}
+    open fun onExit(){}
 }
 
 class PlayerTurn(cycle : BattleCycle) : BattleState(cycle){
     val command = CommandState()
+    var chosen_command = -1
+
     override fun update(dt : Float){
         if (Gdx.input.isKeyPressed(Input.Keys.W))
             command.increment()
         if (Gdx.input.isKeyPressed(Input.Keys.S))
             command.decrement()
         if (Gdx.input.isKeyPressed(Input.Keys.ENTER)){
-            when(command.state){
-                0 -> cycle.enemyhp -= 1
-                1 -> cycle.enemyhp -= 0
-                2 -> cycle.enemyhp -= 5
-            }
-            cycle.switch(EnemyTurn(cycle))
+            cycle.switch(PlayerTurnAnimation(cycle, command.state))
         }
 
         command.update(dt)
     }
 
-    override fun draw(batch : SpriteBatch, font : BitmapFont){
+    override fun draw(batch : SpriteBatch, font : BitmapFont){ 
         command.draw(batch, font, 100f, 100f)
         font.draw(batch, "Player State", 100f, 400f)
+    }
+
+    override fun onEnter(){}
+    override fun onExit(){}
+
+}
+
+class PlayerTurnAnimation(cycle : BattleCycle, var action : Int) : BattleState(cycle){
+    
+    var attack = BasicAttackSkill()
+    override fun update(dt: Float){
+        attack.update(dt, cycle.p, cycle.e)
+        if (attack.isDone()){
+            cycle.switch(EnemyTurn(cycle))
+        }
+    }
+
+    override fun draw(batch : SpriteBatch, font : BitmapFont){
+        attack.draw(batch, cycle.p)
+    }
+
+
+    override fun onEnter(){}
+    override fun onExit(){
+        when(action){
+            0 -> cycle.enemyhp -= 1
+            1 -> cycle.enemyhp -= 0
+            2 -> cycle.enemyhp -= 5
+        }
     }
 
 }
@@ -128,16 +213,24 @@ class EnemyTurn(cycle : BattleCycle) : BattleState(cycle){
     override fun draw(batch : SpriteBatch, font : BitmapFont){
         font.draw(batch, "Enemy State", 100f, 100f)
     }
+
+    override fun onEnter(){}
+    override fun onExit(){}
+
 }
 
 class BattleCycle(var batch : SpriteBatch, var font : BitmapFont, var player : Entity){
     var state : BattleState = PlayerTurn(this)
-
+    
+    var p = PlayerContainer()
+    var e = EnemyContainer()
     var playerhp = 10
     var enemyhp = 10
     var tTexture = Texture("123.png")
     var regions = TextureAtlas("sprites.atlas")
     var animation = Animation(.5f, regions.getRegions())
+    var statetime = 0f
+
     var hp = player.getComponent(StatComponent::class.java)
 
     fun update(dt : Float){
@@ -149,11 +242,25 @@ class BattleCycle(var batch : SpriteBatch, var font : BitmapFont, var player : E
         state.draw(batch, font)
     }
     fun switch(target : BattleState){
+        state.onExit()
         state = target
+        state.onEnter()
     }
     fun didEnd() : Boolean{
         return (hp.hp <= 0 || enemyhp <= 0)
     }
+}
+
+open class BattleContainer(var x : Float, var y : Float){
+
+}
+
+class PlayerContainer : BattleContainer(20f, 200f){
+
+}
+
+class EnemyContainer : BattleContainer(200f, 200f){
+
 }
 
 class BattleScreen(val game : Cac, val type : BattleType, val player : Entity) : Screen{
