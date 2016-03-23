@@ -1,5 +1,12 @@
 package com.mygdx.game
 
+import com.mygdx.game.battle.BattleScreen
+import com.mygdx.game.battle.Skill
+import com.mygdx.game.battle.BattleType
+import com.mygdx.game.battle.BattleContainer
+import com.mygdx.game.battle.BasicAttackSkill
+import com.mygdx.game.battle.BasicRangeSkill
+
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
@@ -17,6 +24,7 @@ import com.badlogic.ashley.core.Entity
 
 import com.badlogic.gdx.graphics.g2d.Animation
 import com.badlogic.gdx.graphics.g2d.TextureRegion
+import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.graphics.Texture
 
 
@@ -99,6 +107,18 @@ fun createPlayer(world : World, engine : Engine, x : Float, y : Float) : Entity{
     player.add(PositionComponent())
     player.add(GraphicComponent(Texture("pmaro.png"), -15f, -20f))
     player.add(physics)
+    var regions = TextureAtlas("sprites.atlas")
+    val animation = Animation(0.5f, regions.getRegions())
+
+    fun effect(user : BattleContainer, targets : Array<out BattleContainer>){
+        val enemy = targets.get(0)
+        enemy.hp -= 1
+    }
+
+    val skill = SkillsComponent()
+    skill.add(BasicAttackSkill(animation, ::effect))
+    skill.add(BasicRangeSkill(animation, ::effect))
+    player.add(skill)
     return player
 }
 

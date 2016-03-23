@@ -1,5 +1,11 @@
 package com.mygdx.game
 
+import com.mygdx.game.battle.Skill
+import com.mygdx.game.battle.SkillType
+import com.mygdx.game.battle.BasicAttackSkill
+import com.mygdx.game.battle.BasicRangeSkill
+import com.mygdx.game.battle.BattleType
+import com.mygdx.game.battle.BattleContainer
 
 import com.badlogic.ashley.core.Component
 import com.badlogic.gdx.physics.box2d.*
@@ -120,12 +126,29 @@ open class SkillsComponent : Component{
     }
 
     fun getRange() : Skill?{
+
         for (skill in skills){
             if (skill.type == SkillType.RANGE)
                 return skill
         }
 
         return null
+    }
+
+    fun getSkill() : ArrayList<Skill>{
+        var list = ArrayList<Skill>(skills.size)
+        for (skill in skills)
+            if (skill.type == SkillType.SKILL)
+                list.add(skill)
+
+        return list
+    }
+
+    fun removeSkill(name : String, type : SkillType = SkillType.SKILL){
+        for (skill in skills){
+            if (skill.type == type && skill.name == name)
+                skills.remove(skill) 
+        }
     }
     //holds skills
     //one skill is range, one is melee
